@@ -1,12 +1,14 @@
 using UnityEngine;
 
 [RequireComponent(typeof(CharacterController))]
+[RequireComponent(typeof(PlayerAttributes))] // Automatically adds attributes if missing
 public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
     [SerializeField] private float walkSpeed = 5f;
     [SerializeField] private float gravity = -15f;
     [SerializeField] private float jumpHeight = 1.2f;
+    [SerializeField] private float sprintSpeed = 8.5f; // Absolute speed when sprinting
 
     [Header("Look")]
     [SerializeField] private Transform cameraRoot;
@@ -15,12 +17,16 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float maxPitch = 85f;
 
     private CharacterController characterController;
+    private PlayerAttributes attributes;
     private Vector3 verticalVelocity;
     private float cameraPitch = 0f;
+    //public bool to see if player is moving
+    public bool IsMoving => characterController.velocity.magnitude > 0.1f;
 
     private void Awake()
     {
         characterController = GetComponent<CharacterController>();
+        attributes = GetComponent<PlayerAttributes>();
     }
     /// <summary>
     ///  on start, lock the cursor in place and make it invisible
@@ -53,35 +59,42 @@ public class PlayerController : MonoBehaviour
     // movement up/down/left/right/front/back
     private void HandleMovement()
     {
-        // 1. Gather directional input
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
 
         Vector3 moveDirection = (transform.right * horizontal + transform.forward * vertical).normalized;
 
-        // 2. Handle ground state and jumping
+        // Check if player wants to sprint, is moving forward, is grounded, AND has stamina left
+        bool wantsToSprint = Input.GetKey(KeyCode.LeftShift) && vertical > 0f && characterController.isGrounded;
+        bool isSprinting = wantsToSprint && attributes.HasStamina;
+        // drain stamina if they are holding shift
+        if (isSprinting)
+        {
+            attributes.DrainStaminaForSprint();
+        }
+
+        float currentSpeed = isSprinting ? sprintSpeed : walkSpeed;
+
+        // Ground check & jumping
         if (characterController.isGrounded)
         {
-            // Keep a light downward force while grounded so isGrounded stays true
             if (verticalVelocity.y < 0f)
             {
                 verticalVelocity.y = -2f;
             }
 
-            // Trigger jump
-            if (Input.GetButtonDown("Jump"))
+            if (Input.GetButtonDown("Jump") && attributes.HasStamina && (attributes.CurrentStamina > attributes.StaminaLossOnJump)) // if they can jump
             {
                 verticalVelocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+                attributes.DrainStaminaForJump();
             }
         }
         else
         {
-            // 3. Only apply gravity acceleration while airborne
             verticalVelocity.y += gravity * Time.deltaTime;
         }
 
-        // 4. Combine horizontal motion and vertical velocity into ONE single move call
-        Vector3 totalVelocity = (moveDirection * walkSpeed) + verticalVelocity;
+        Vector3 totalVelocity = (moveDirection * currentSpeed) + verticalVelocity;
         characterController.Move(totalVelocity * Time.deltaTime);
     }
 }
