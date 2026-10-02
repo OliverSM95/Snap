@@ -13,8 +13,13 @@ public class PlayerAttributes : MonoBehaviour
     [SerializeField] private float jumpingStaminaDrainRate = 10f; // How much stamina is drained on a jump
     [SerializeField] private float regenDelay = 2.5f;        // Seconds to wait before regen starts
     [SerializeField] private float currentStamina;
-
     private float regenTimer;
+
+    [Header("Economy & Progression")]
+    [SerializeField] private int money = 0;
+    [SerializeField] private int streetCred = 1; // Level
+    public int Money => money;
+    public int StreetCred => streetCred;
 
     // Public read-only getters for UI or other scripts
     // like get functions
@@ -93,5 +98,30 @@ public class PlayerAttributes : MonoBehaviour
     public void Heal(float amount)
     {
         currentHealth = Mathf.Min(currentHealth + amount, maxHealth);
+    }
+
+
+    /// <summary>
+    /// Money System
+    /// </summary>
+    /// <param name="amount"></param>
+    public void AddMoney(int amount)
+    {
+        money += amount;
+    }
+
+    public bool SpendMoney(int amount)
+    {
+        if (money >= amount)
+        {
+            money -= amount;
+            return true;
+        }
+        return false;
+    }
+
+    public void AddStreetCred(int amount)
+    {
+        streetCred += amount;
     }
 }
